@@ -3,7 +3,9 @@
     <color name="colorPrimary">#3F51B5</color>
     <color name="colorPrimaryDark">#303F9F</color>
     <color name="colorAccent">#FF4081</color>
+    <color name="red_bt_bg">#99f90411</color>
     <color name="cmbkb_white">#ffffffff</color>
     <color name="blue_btn_bg">#0698fe</color>
     <color name= "blue_bt_bg">#f2b739</color>
+    <color name= "yell_bt_bg">#99f2b739</color>
 </resources>

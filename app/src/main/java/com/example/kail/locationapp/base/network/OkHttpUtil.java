@@ -1,6 +1,5 @@
-package com.example.kail.locationapp.util;
+package com.example.kail.locationapp.base.network;
 
-import com.example.kail.locationapp.interfaces.SuccessCallback;
 import com.google.gson.Gson;
 
 import java.io.IOException;
@@ -20,9 +19,6 @@ import okhttp3.Response;
 
 public class OkHttpUtil {
     private static final OkHttpClient mOkHttpClient = new OkHttpClient();
-    static{
-
-    }
     /**
      * 该不会开启异步线程。
      * @param request
@@ -37,11 +33,11 @@ public class OkHttpUtil {
      * 开启异步线程访问网络, 且不在意返回结果（实现空callback）
      * @param request
      */
-    public static void enqueue(final Request request, final SuccessCallback successCallback, final int code, final Class clzz){
+    public static void enqueue(final Request request, final NetWorkCallback netWorkCallback, final int code, final Class clzz){
         mOkHttpClient.newCall(request).enqueue(new Callback() {
             @Override
             public void onFailure(Call call, IOException e) {
-                successCallback.error(code,"服务器请求失败");
+                netWorkCallback.error(code,"服务器请求失败");
 
             }
 
@@ -49,9 +45,9 @@ public class OkHttpUtil {
             public void onResponse(Call call, Response response) throws IOException {
                 if (response.code()==200) {
                     Gson gson = new Gson();
-                    successCallback.success(code, gson.fromJson(response.body().charStream(), clzz));
+                    netWorkCallback.success(code, gson.fromJson(response.body().charStream(), clzz));
                 }else {
-                    successCallback.error(code,"服务器请求失败");
+                    netWorkCallback.error(code,"服务器请求失败");
                 }
             }
         });
@@ -80,7 +76,7 @@ public class OkHttpUtil {
     }
 
 
-    public static void post(String url, Map<String, String> paramMap, SuccessCallback successCallback, int code, Class clzz)
+    public static void post(String url, Map<String, String> paramMap, int code, Class clzz, NetWorkCallback netWorkCallback)
     {
         try
         {
@@ -96,12 +92,12 @@ public class OkHttpUtil {
                     .url(url)
                     .post(formBody.build())//传递请求体
                     .build();
-            enqueue(request,successCallback, code, clzz);
+            enqueue(request, netWorkCallback, code, clzz);
 
         }
         catch (Exception ex)
         {
-            successCallback.error(code,"请求失败");
+            netWorkCallback.error(code,"请求失败");
             return;
         }
     }

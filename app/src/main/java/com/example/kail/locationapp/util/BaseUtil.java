@@ -1,20 +1,18 @@
 package com.example.kail.locationapp.util;
 
-import android.Manifest;
 import android.app.AlarmManager;
 import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
-import android.content.pm.PackageManager;
-import android.os.PowerManager;
+import android.os.Environment;
 import android.os.SystemClock;
-import android.support.v4.app.ActivityCompat;
 import android.telephony.TelephonyManager;
 import android.text.TextUtils;
+import android.util.Log;
 import android.widget.Toast;
 
-import java.sql.Timestamp;
+import java.io.File;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.UUID;
@@ -128,6 +126,43 @@ public class BaseUtil {
         }
         return uuid;
     }
+
+    /**
+     * 获取SD卡缓存目录
+     * @param context 上下文
+     * {@link android.os.Environment#DIRECTORY_MUSIC},
+     * {@link android.os.Environment#DIRECTORY_PODCASTS},
+     * {@link android.os.Environment#DIRECTORY_RINGTONES},
+     * {@link android.os.Environment#DIRECTORY_ALARMS},
+     * {@link android.os.Environment#DIRECTORY_NOTIFICATIONS},
+     * {@link android.os.Environment#DIRECTORY_PICTURES}, or
+     * {@link android.os.Environment#DIRECTORY_MOVIES}.or 自定义文件夹名称
+     * @return 缓存目录文件夹 或 null（无SD卡或SD卡挂载失败）
+     */
+    public static String getExternalCacheDirectory(Context context) {
+        File appCacheDir = null;
+        String type ="";
+        if( Environment.MEDIA_MOUNTED.equals(Environment.getExternalStorageState())) {
+            if (TextUtils.isEmpty(type)){
+                appCacheDir = context.getExternalCacheDir();
+            }else {
+                appCacheDir = context.getExternalFilesDir(type);
+            }
+
+            if (appCacheDir == null){// 有些手机需要通过自定义目录
+                appCacheDir = new File(Environment.getExternalStorageDirectory(),"Android/data/"+context.getPackageName()+"/cache/"+type);
+            }
+            if (appCacheDir == null){
+                return "";
+            }else {
+                if (!appCacheDir.exists()&&!appCacheDir.mkdirs()){
+                }
+            }
+        }
+        return appCacheDir.getPath();
+    }
+
+
 
 
 }

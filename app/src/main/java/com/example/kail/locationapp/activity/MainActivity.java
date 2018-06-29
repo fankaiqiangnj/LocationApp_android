@@ -1,8 +1,10 @@
 package com.example.kail.locationapp.activity;
 
 import android.Manifest;
+import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
+import android.content.ServiceConnection;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.hardware.Sensor;
@@ -12,6 +14,7 @@ import android.hardware.SensorManager;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
+import android.os.IBinder;
 import android.os.Message;
 import android.support.annotation.Nullable;
 import android.support.v4.app.ActivityCompat;
@@ -38,28 +41,43 @@ import com.baidu.mapapi.map.MyLocationConfiguration;
 import com.baidu.mapapi.map.MyLocationData;
 import com.baidu.mapapi.model.LatLng;
 import com.example.kail.locationapp.R;
-import com.example.kail.locationapp.interfaces.SuccessCallback;
+import com.example.kail.locationapp.base.network.NetWorkCallback;
+import com.example.kail.locationapp.base.network.OkHttpUtil;
+import com.example.kail.locationapp.model.MessageEvent;
+import com.example.kail.locationapp.model.SocketEvent;
 import com.example.kail.locationapp.model.SuccessModel;
+import com.example.kail.locationapp.service.SocketService;
 import com.example.kail.locationapp.util.BaseUtil;
 import com.example.kail.locationapp.util.EditDialog;
-import com.example.kail.locationapp.util.OkHttpUtil;
 import com.example.kail.locationapp.util.SPUtils;
+import com.example.kail.locationapp.util.SocketEditDialog;
 import com.example.kail.locationapp.util.UrlUtil;
 
+import org.greenrobot.eventbus.EventBus;
+import org.greenrobot.eventbus.Subscribe;
+import org.greenrobot.eventbus.ThreadMode;
+
 import java.io.IOException;
+import java.net.InetSocketAddress;
+import java.net.Socket;
+import java.net.SocketAddress;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Timer;
 import java.util.TimerTask;
+import java.util.concurrent.SynchronousQueue;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 
-public class MainActivity extends AppCompatActivity implements SensorEventListener, SuccessCallback {
+public class MainActivity extends AppCompatActivity implements SensorEventListener, NetWorkCallback {
     Context mContext;
     private MapView mMapView;
     private TextView mLongitude;
     private TextView mLatitude;
     private TextView mAddress;
     private TextView mDownload;
-    private String url ="";
+    private TextView mTvSocket;
+    private String url = "";
     private BaiduMap mBaiduMap;
     BitmapDescriptor mCurrentMarker;
     private MyLocationConfiguration.LocationMode mCurrentMode;
@@ -77,11 +95,16 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     private float mCurrentAccracy;
     private String mAddressStr = "";
     private Timer mTimer;
-    String ip ="";
+    String ip = "";
+    String socketIp = "";
+    String socketPort = "";
     private TelephonyManager tm;
-    String client ="数据链接异常";
+    String client = "数据链接异常";
+    boolean socketIsCanClient = false;
+    private SocketService socketService = null;
     public MyLocationListenner myListener = new MyLocationListenner();
     //BDAbstractLocationListener为7.2版本新增的Abstract类型的监听接口，原有BDLocationListener接口暂时同步保留。具体介绍请参考后文中的说明
+    ThreadPoolExecutor threadPoolExecutor = new ThreadPoolExecutor(2, 6, 30, TimeUnit.SECONDS, new SynchronousQueue<Runnable>());
 
 
     private Handler doActionHandler = new Handler() {
@@ -93,9 +116,9 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
                 case 1:
                     mLongitude.setText("经度: " + mCurrentLon);
                     mLatitude.setText("纬度: " + mCurrentLat);
-                    if (client.equals("数据连接正常")){
+                    if (client.equals("数据连接正常")) {
                         mAddress.setTextColor(Color.GREEN);
-                    }else {
+                    } else {
                         mAddress.setTextColor(Color.RED);
                     }
                     mAddress.setText("连接: " + client);
@@ -103,6 +126,20 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
                 default:
                     break;
             }
+        }
+    };
+
+    public ServiceConnection serviceConnection = new ServiceConnection() {
+        @Override
+        public void onServiceConnected(ComponentName name, IBinder service) {
+            SocketService.MyBinder binder = (SocketService.MyBinder) service;
+            socketService = binder.getService();
+
+        }
+
+        @Override
+        public void onServiceDisconnected(ComponentName name) {
+
         }
     };
 
@@ -116,26 +153,54 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         setContentView(R.layout.activity_main);
         mContext = this.getBaseContext();
-        if (!TextUtils.isEmpty((String)SPUtils.get(mContext,"serviceIP",""))){
-            url = UrlUtil.http+SPUtils.get(mContext,"serviceIP","")+UrlUtil.uri;
-            ip = (String) SPUtils.get(mContext,"serviceIP","");
-        }else {
-            url = UrlUtil.http+UrlUtil.ip+UrlUtil.uri;
+        if (!TextUtils.isEmpty((String) SPUtils.get(mContext, "serviceIP", ""))) {
+            url = UrlUtil.http + SPUtils.get(mContext, "serviceIP", "") + UrlUtil.uri;
+            ip = (String) SPUtils.get(mContext, "serviceIP", "");
+        } else {
+            url = UrlUtil.http + UrlUtil.ip + UrlUtil.uri;
             ip = UrlUtil.ip;
         }
+        if (TextUtils.isEmpty((String) SPUtils.get(mContext, "socketIp", "")) ||
+                TextUtils.isEmpty((String) SPUtils.get(mContext, "socketPort", ""))) {
+            socketIp = UrlUtil.socketIp;
+            socketPort = UrlUtil.socketPort;
+        } else {
+            socketIp = (String) SPUtils.get(mContext, "socketIp", "");
+            socketPort = (String) SPUtils.get(mContext, "socketPort", "");
+        }
+        checkSocket();
         //获取地图控件引用
         mMapView = (MapView) findViewById(R.id.bmapView);
         mLongitude = (TextView) findViewById(R.id.tv_longitude);
         mLatitude = (TextView) findViewById(R.id.tv_latitude);
         mAddress = (TextView) findViewById(R.id.tv_address);
         mDownload = (TextView) findViewById(R.id.tv_download);
+        mTvSocket = findViewById(R.id.tv_socket);
+        mTvSocket.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                if (socketIsCanClient) {
+
+                } else {
+                    SocketEditDialog socketEditDialog = new SocketEditDialog(MainActivity.this, socketIp, socketPort, new SocketEditDialog.CallBack() {
+                        @Override
+                        public void dialogCarllBack(String ip, String port) {
+                            socketIp = ip;
+                            socketPort = port;
+                            checkSocket();
+                        }
+                    });
+                    socketEditDialog.show();
+                }
+            }
+        });
         mAddress.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                 EditDialog editDialog = new EditDialog(MainActivity.this, ip, new EditDialog.CallBack() {
+                EditDialog editDialog = new EditDialog(MainActivity.this, ip, new EditDialog.CallBack() {
                     @Override
                     public void dialogCarllBack(String s) {
-                        url = UrlUtil.http+s+UrlUtil.uri;
+                        url = UrlUtil.http + s + UrlUtil.uri;
                     }
                 });
                 editDialog.show();
@@ -154,10 +219,10 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
             if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION)
                     != PackageManager.PERMISSION_GRANTED || ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
                     != PackageManager.PERMISSION_GRANTED || ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE)
-                    != PackageManager.PERMISSION_GRANTED||ContextCompat.checkSelfPermission(this, Manifest.permission.READ_PHONE_STATE)
+                    != PackageManager.PERMISSION_GRANTED || ContextCompat.checkSelfPermission(this, Manifest.permission.READ_PHONE_STATE)
                     != PackageManager.PERMISSION_GRANTED) {
                 //申请定位权限
-                ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.ACCESS_COARSE_LOCATION, Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.WRITE_EXTERNAL_STORAGE,Manifest.permission.READ_PHONE_STATE}, 1);
+                ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.ACCESS_COARSE_LOCATION, Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.WRITE_EXTERNAL_STORAGE, Manifest.permission.READ_PHONE_STATE}, 1);
             } else {
                 initMyLocation();
             }
@@ -167,6 +232,10 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         }
         mTimer = new Timer();
         setTimerTask();
+        Intent intent = new Intent(this, SocketService.class);
+        bindService(intent, serviceConnection, BIND_AUTO_CREATE);
+        EventBus.getDefault().register(this);
+
 //        ScheduledExecutorService
     }
 
@@ -180,6 +249,8 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         mSensorManager.unregisterListener(this);
         mMapView.onDestroy();
         mMapView = null;
+        unbindService(serviceConnection);
+        EventBus.getDefault().unregister(this);
         super.onDestroy();
     }
 
@@ -189,12 +260,12 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         //普通地图
         mBaiduMap.setMapType(BaiduMap.MAP_TYPE_NORMAL);
         mSensorManager = (SensorManager) getSystemService(SENSOR_SERVICE);//获取传感器管理服务
-        if(mSensorManager!=null){
+        if (mSensorManager != null) {
             //获得方向传感器
-            mSensor=mSensorManager.getDefaultSensor(Sensor.TYPE_ORIENTATION);
+            mSensor = mSensorManager.getDefaultSensor(Sensor.TYPE_ORIENTATION);
         }
-        if(mSensor!=null){
-            mSensorManager.registerListener(this, mSensor,SensorManager.SENSOR_DELAY_UI);//第三个参数为经度
+        if (mSensor != null) {
+            mSensorManager.registerListener(this, mSensor, SensorManager.SENSOR_DELAY_UI);//第三个参数为经度
         }
         mCurrentMode = MyLocationConfiguration.LocationMode.FOLLOWING;
 
@@ -303,11 +374,11 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     public void success(int code, Object Object) {
         switch (code) {
             case 0:
-                if (Object instanceof SuccessModel){
+                if (Object instanceof SuccessModel) {
                     SuccessModel model = (SuccessModel) Object;
-                    if (model.getCode() ==100){
+                    if (model.getCode() == 100) {
                         client = "数据连接正常";
-                    }else {
+                    } else {
                         client = "数据连接异常";
                     }
                 }
@@ -319,7 +390,6 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         }
 
     }
-
 
 
     /**
@@ -373,10 +443,55 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
                 localHashMap.put("east", String.valueOf(MainActivity.this.mCurrentLon));
                 localHashMap.put("north", String.valueOf(MainActivity.this.mCurrentLat));
                 localHashMap.put("userId", tm.getDeviceId());
-                OkHttpUtil.post(url+ "CoreServlet", localHashMap, MainActivity.this, 0, SuccessModel.class);
+                OkHttpUtil.post(url + "CoreServlet", localHashMap, 0, SuccessModel.class, MainActivity.this);
             }
         }, 7000L, 7000L);
     }
 
+    @Subscribe(threadMode = ThreadMode.MAIN)
+    public void Event(MessageEvent messageEvent) {
+        mTvSocket.setVisibility(View.VISIBLE);
+
+    }
+
+    @Subscribe(threadMode = ThreadMode.MAIN)
+    public void SocketEvent(SocketEvent socketEvent) {
+        if (socketEvent.isCanClient()){
+            mTvSocket.setVisibility(View.GONE);
+            BaseUtil.showToast(this, "工单服务连接成功");
+            mTvSocket.setBackground(ContextCompat.getDrawable(this, R.drawable.bg_radius_yell));
+
+        }else {
+            mTvSocket.setVisibility(View.VISIBLE);
+            BaseUtil.showToast(this, "工单服务连接失败");
+            mTvSocket.setBackground(ContextCompat.getDrawable(this, R.drawable.bg_radius_red));
+        }
+
+
+    }
+
+    public void checkSocket() {
+        threadPoolExecutor.execute(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    Socket s = new Socket();
+                    SocketAddress socketAddress = new InetSocketAddress(socketIp, Integer.valueOf(socketPort));
+                    s.connect(socketAddress,1500);
+                    socketIsCanClient = true;
+                    s.close();
+                    SocketEvent messageEvent = new SocketEvent(true);
+                    EventBus.getDefault().post(messageEvent);
+                } catch (IOException e) {
+                    socketIsCanClient = false;
+                    SocketEvent messageEvent = new SocketEvent(false);
+                    EventBus.getDefault().post(messageEvent);
+                    e.printStackTrace();
+                }
+
+            }
+        });
+
+    }
 }
 

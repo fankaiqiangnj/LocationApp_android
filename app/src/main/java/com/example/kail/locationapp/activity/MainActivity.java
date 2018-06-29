@@ -43,14 +43,15 @@ import com.baidu.mapapi.model.LatLng;
 import com.example.kail.locationapp.R;
 import com.example.kail.locationapp.base.network.NetWorkCallback;
 import com.example.kail.locationapp.base.network.OkHttpUtil;
+import com.example.kail.locationapp.dialog.AlarmDialog;
 import com.example.kail.locationapp.model.MessageEvent;
 import com.example.kail.locationapp.model.SocketEvent;
 import com.example.kail.locationapp.model.SuccessModel;
 import com.example.kail.locationapp.service.SocketService;
 import com.example.kail.locationapp.util.BaseUtil;
-import com.example.kail.locationapp.util.EditDialog;
+import com.example.kail.locationapp.dialog.EditDialog;
 import com.example.kail.locationapp.util.SPUtils;
-import com.example.kail.locationapp.util.SocketEditDialog;
+import com.example.kail.locationapp.dialog.SocketEditDialog;
 import com.example.kail.locationapp.util.UrlUtil;
 
 import org.greenrobot.eventbus.EventBus;
@@ -61,8 +62,10 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.net.SocketAddress;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.concurrent.SynchronousQueue;
@@ -179,7 +182,16 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         mTvSocket.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                if (socketIsCanClient) {
+                if (!socketIsCanClient) {
+                    List<String> list= new ArrayList<String>();
+                    list.add("1");
+                    AlarmDialog alarmDialog = new AlarmDialog(MainActivity.this,list, new AlarmDialog.CallBack() {
+                        @Override
+                        public void dialogCarllBack(String s) {
+
+                        }
+                    });
+                    alarmDialog.show();
 
                 } else {
                     SocketEditDialog socketEditDialog = new SocketEditDialog(MainActivity.this, socketIp, socketPort, new SocketEditDialog.CallBack() {
@@ -451,7 +463,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     @Subscribe(threadMode = ThreadMode.MAIN)
     public void Event(MessageEvent messageEvent) {
         mTvSocket.setVisibility(View.VISIBLE);
-
+        SPUtils.put(this,"alarm",messageEvent.getMessage());
     }
 
     @Subscribe(threadMode = ThreadMode.MAIN)

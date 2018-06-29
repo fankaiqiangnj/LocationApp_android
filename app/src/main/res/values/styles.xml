@@ -28,4 +28,26 @@
         <item name="android:windowExitAnimation">@anim/dialog_top_exit</item>
     </style>
 
+
+    <style name="BottomDialog" parent="@android:style/Theme.Holo.Dialog">
+        <!-- 是否有边框 -->
+        <item name="android:windowFrame">@null</item>
+        <!--是否在悬浮Activity之上  -->
+        <item name="android:windowIsFloating">true</item>
+        <!-- 标题 -->
+        <item name="android:windowNoTitle">true</item>
+        <!--阴影  -->
+        <item name="android:windowIsTranslucent">true</item><!--半透明-->
+        <!--背景透明-->
+        <item name="android:windowBackground">@color/cmbkb_white</item>
+        <!-- 还可以加入一些弹出和退出的动画 (lan)-->
+        //动画效果
+        <item name="android:windowAnimationStyle">@style/BottomAnimation</item>
+    </style>
+    //进入和退出的动画命名
+    <style name="BottomAnimation" parent="android:Animation" >
+        <item name="android:windowEnterAnimation">@anim/dialog_top_enter</item>
+        <item name="android:windowExitAnimation">@anim/dialog_top_exit</item>
+    </style>
+
 </resources>

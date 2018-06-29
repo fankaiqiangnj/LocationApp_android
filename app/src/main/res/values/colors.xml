@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <color name="colorPrimary">#3F51B5</color>
+    <color name="black">#fb0b0b0b</color>
     <color name="colorPrimaryDark">#303F9F</color>
     <color name="colorAccent">#FF4081</color>
     <color name="red_bt_bg">#99f90411</color>
@@ -8,4 +9,5 @@
     <color name="blue_btn_bg">#0698fe</color>
     <color name= "blue_bt_bg">#f2b739</color>
     <color name= "yell_bt_bg">#99f2b739</color>
+    <color name="line_color">#e8e8e8</color>
 </resources>

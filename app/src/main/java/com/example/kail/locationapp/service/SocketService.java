@@ -5,6 +5,7 @@ import android.content.Intent;
 import android.os.Binder;
 import android.os.IBinder;
 
+import com.example.kail.locationapp.LocationAppApplication;
 import com.example.kail.locationapp.model.MessageEvent;
 import com.google.gson.Gson;
 
@@ -43,11 +44,11 @@ public class SocketService extends Service {
     @Override
     public void onCreate() {
         super.onCreate();
-        threadPoolExecutor.execute(new Runnable() {
+        LocationAppApplication.getInstance().getThreadPoolExecutor().execute(new Runnable() {
             @Override
             public void run() {
                 try {
-                    ServerSocket serverSocket = new ServerSocket(8888);
+                    ServerSocket serverSocket = new ServerSocket(1707);
                     while (true) {
                         Socket socket = serverSocket.accept();
                         // 实例化输入流，并获取网页代码

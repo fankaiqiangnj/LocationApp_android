@@ -40,10 +40,13 @@ import com.baidu.mapapi.map.MapView;
 import com.baidu.mapapi.map.MyLocationConfiguration;
 import com.baidu.mapapi.map.MyLocationData;
 import com.baidu.mapapi.model.LatLng;
+import com.example.kail.locationapp.LocationAppApplication;
 import com.example.kail.locationapp.R;
 import com.example.kail.locationapp.base.network.NetWorkCallback;
 import com.example.kail.locationapp.base.network.OkHttpUtil;
 import com.example.kail.locationapp.dialog.AlarmDialog;
+import com.example.kail.locationapp.model.ClearAlarm;
+import com.example.kail.locationapp.model.ErrorMessage;
 import com.example.kail.locationapp.model.MessageEvent;
 import com.example.kail.locationapp.model.SocketEvent;
 import com.example.kail.locationapp.model.SuccessModel;
@@ -99,7 +102,6 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     private float mCurrentAccracy;
     private String mAddressStr = "";
     private Timer mTimer;
-    Gson gson = new Gson();
     String ip = "";
     String socketIp = "";
     String socketPort = "";
@@ -109,7 +111,6 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     private SocketService socketService = null;
     public MyLocationListenner myListener = new MyLocationListenner();
     //BDAbstractLocationListener为7.2版本新增的Abstract类型的监听接口，原有BDLocationListener接口暂时同步保留。具体介绍请参考后文中的说明
-    ThreadPoolExecutor threadPoolExecutor = new ThreadPoolExecutor(2, 6, 30, TimeUnit.SECONDS, new SynchronousQueue<Runnable>());
 
 
     private Handler doActionHandler = new Handler() {
@@ -158,21 +159,10 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         setContentView(R.layout.activity_main);
         mContext = this.getBaseContext();
-        if (!TextUtils.isEmpty((String) SPUtils.get(mContext, "serviceIP", ""))) {
-            url = UrlUtil.http + SPUtils.get(mContext, "serviceIP", "") + UrlUtil.uri;
-            ip = (String) SPUtils.get(mContext, "serviceIP", "");
-        } else {
-            url = UrlUtil.http + UrlUtil.ip + UrlUtil.uri;
-            ip = UrlUtil.ip;
-        }
-        if (TextUtils.isEmpty((String) SPUtils.get(mContext, "socketIp", "")) ||
-                TextUtils.isEmpty((String) SPUtils.get(mContext, "socketPort", ""))) {
-            socketIp = UrlUtil.socketIp;
-            socketPort = UrlUtil.socketPort;
-        } else {
-            socketIp = (String) SPUtils.get(mContext, "socketIp", "");
-            socketPort = (String) SPUtils.get(mContext, "socketPort", "");
-        }
+        ip = UrlUtil.getIp(mContext);
+        url = UrlUtil.getUrl(ip);
+        socketIp= UrlUtil.getSocketIp(mContext);
+        socketPort =UrlUtil.getSocketPort(mContext);
         checkSocket();
         //获取地图控件引用
         mMapView = (MapView) findViewById(R.id.bmapView);
@@ -184,9 +174,24 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         mTvSocket.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                if (!socketIsCanClient) {
+                if (socketIsCanClient) {
                     List<MessageEvent> list= new ArrayList();
-                    list.add(new MessageEvent("19109987","110kv 变电站。。设备;110kv 变电站。。设备;","38.111,118.098"));
+                    String s = (String) SPUtils.get(mContext,"alarm","");
+                    if (TextUtils.isEmpty(s)){
+                        return;
+                    }
+                    MessageEvent messageEvent = LocationAppApplication.getInstance().getGson().fromJson(s,MessageEvent.class);
+                    if (messageEvent==null){
+                        return;
+                    }
+                    if (messageEvent.getType()>2){
+                        return;
+                    }else {
+                        list.add(messageEvent);
+                    }
+                    if (list.size()==0){
+                        return;
+                    }
                     AlarmDialog alarmDialog = new AlarmDialog(MainActivity.this,list, new AlarmDialog.CallBack() {
                         @Override
                         public void dialogCarllBack(String s) {
@@ -465,7 +470,18 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     @Subscribe(threadMode = ThreadMode.MAIN)
     public void Event(MessageEvent messageEvent) {
         mTvSocket.setVisibility(View.VISIBLE);
-        SPUtils.put(this,"alarm",gson.toJson(messageEvent));
+        mTvSocket.setText("1");
+        SPUtils.put(this,"alarm",LocationAppApplication.getInstance().getGson().toJson(messageEvent));
+    }
+    @Subscribe(threadMode = ThreadMode.MAIN)
+    public void Event(ClearAlarm clearAlarm) {
+        mTvSocket.setText("0");
+        mTvSocket.setVisibility(View.GONE);
+    }
+
+    @Subscribe(threadMode = ThreadMode.MAIN)
+    public void Event(ErrorMessage errorMessage) {
+        BaseUtil.showToast(mContext,errorMessage.getError());
     }
 
     @Subscribe(threadMode = ThreadMode.MAIN)
@@ -474,7 +490,6 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
             mTvSocket.setVisibility(View.GONE);
             BaseUtil.showToast(this, "工单服务连接成功");
             mTvSocket.setBackground(ContextCompat.getDrawable(this, R.drawable.bg_radius_yell));
-
         }else {
             mTvSocket.setVisibility(View.VISIBLE);
             BaseUtil.showToast(this, "工单服务连接失败");
@@ -485,7 +500,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     }
 
     public void checkSocket() {
-        threadPoolExecutor.execute(new Runnable() {
+        LocationAppApplication.getInstance().getThreadPoolExecutor().execute(new Runnable() {
             @Override
             public void run() {
                 try {

@@ -21,7 +21,7 @@ import java.util.List;
  * Created by fan on 2018/4/15.
  */
 
-public class AlarmDialog extends Dialog {
+public class AlarmDialog extends Dialog implements AlarmRecycleAdapter.Impl{
     Context mContext;
     CallBack dialogCallBack;
     List<MessageEvent> list;
@@ -50,7 +50,7 @@ public class AlarmDialog extends Dialog {
         window.setAttributes(params);
         recyclerView = findViewById(R.id.dialog_recycler);
         recyclerView.setLayoutManager(new LinearLayoutManager(mContext));
-        AlarmRecycleAdapter alarmRecycleAdapter = new AlarmRecycleAdapter(mContext,R.layout.item_alarm_dialog,list);
+        AlarmRecycleAdapter alarmRecycleAdapter = new AlarmRecycleAdapter(mContext,R.layout.item_alarm_dialog,list,this);
         recyclerView.setAdapter(alarmRecycleAdapter);
 
 
@@ -58,6 +58,11 @@ public class AlarmDialog extends Dialog {
         {
             this.getWindow().setLayout(LinearLayout.LayoutParams.MATCH_PARENT, height);
         }*/
+    }
+
+    @Override
+    public void close() {
+        dismiss();
     }
 
     public interface CallBack {

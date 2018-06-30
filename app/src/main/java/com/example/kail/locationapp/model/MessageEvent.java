@@ -1,17 +1,46 @@
 package com.example.kail.locationapp.model;
 
 public class MessageEvent {
-    private String message;
-    public  MessageEvent(String message){
-        this.message=message;
+    public MessageEvent() {
     }
 
-    public String getMessage() {
-        return message;
+    public MessageEvent(String gdbh, String qxnr, String gps) {
+        this.gdbh = gdbh;
+        this.qxnr = qxnr;
+        this.gps = gps;
     }
 
-    public void setMessage(String message) {
-        this.message = message;
+    /**
+     * gdbh : 工单号
+     * qxnr : 抢修内容
+     * gps : 坐标,坐标
+     */
+
+    private String gdbh;
+    private String qxnr;
+    private String gps;
+
+    public String getGdbh() {
+        return gdbh;
     }
 
+    public void setGdbh(String gdbh) {
+        this.gdbh = gdbh;
+    }
+
+    public String getQxnr() {
+        return qxnr;
+    }
+
+    public void setQxnr(String qxnr) {
+        this.qxnr = qxnr;
+    }
+
+    public String getGps() {
+        return gps;
+    }
+
+    public void setGps(String gps) {
+        this.gps = gps;
+    }
 }

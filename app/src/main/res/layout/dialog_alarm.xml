@@ -2,11 +2,11 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/lin_parent"
     android:layout_width="match_parent"
-    android:layout_height="wrap_content"
+    android:layout_height="250dp"
     android:orientation="vertical">
     <TextView
         android:layout_marginLeft="15dp"
-        android:text="工单"
+        android:text="待处理工单"
         android:gravity="center_vertical"
         android:layout_width="match_parent"
         android:layout_height="35dp" />

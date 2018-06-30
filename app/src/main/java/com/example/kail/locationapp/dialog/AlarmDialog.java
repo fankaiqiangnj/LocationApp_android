@@ -6,22 +6,15 @@ import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
-import android.text.TextUtils;
 import android.view.Gravity;
-import android.view.View;
 import android.view.Window;
 import android.view.WindowManager;
-import android.widget.EditText;
-import android.widget.LinearLayout;
-import android.widget.TextView;
 
 import com.example.kail.locationapp.R;
-import com.example.kail.locationapp.base.adapter.AlarmRecycleAdapter;
+import com.example.kail.locationapp.adapter.AlarmRecycleAdapter;
 import com.example.kail.locationapp.base.util.ScreenUtils;
-import com.example.kail.locationapp.util.BaseUtil;
-import com.example.kail.locationapp.util.SPUtils;
+import com.example.kail.locationapp.model.MessageEvent;
 
-import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -31,12 +24,12 @@ import java.util.List;
 public class AlarmDialog extends Dialog {
     Context mContext;
     CallBack dialogCallBack;
-    List<String> list;
+    List<MessageEvent> list;
     RecyclerView recyclerView;
     int height = (int) Math.ceil(ScreenUtils.getScreenHeight(mContext) * 0.618);
 
 
-    public AlarmDialog(@NonNull Context context, List<String> alarmList, CallBack callBack) {
+    public AlarmDialog(@NonNull Context context, List<MessageEvent> alarmList, CallBack callBack) {
         super(context, R.style.BottomAnimation);
         mContext = context;
         dialogCallBack = callBack;
@@ -61,12 +54,10 @@ public class AlarmDialog extends Dialog {
         recyclerView.setAdapter(alarmRecycleAdapter);
 
 
-
-
-        if(list.size()>2)
+       /* if(list.size()>2)
         {
             this.getWindow().setLayout(LinearLayout.LayoutParams.MATCH_PARENT, height);
-        }
+        }*/
     }
 
     public interface CallBack {

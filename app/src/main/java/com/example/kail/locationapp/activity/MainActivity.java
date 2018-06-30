@@ -53,6 +53,7 @@ import com.example.kail.locationapp.dialog.EditDialog;
 import com.example.kail.locationapp.util.SPUtils;
 import com.example.kail.locationapp.dialog.SocketEditDialog;
 import com.example.kail.locationapp.util.UrlUtil;
+import com.google.gson.Gson;
 
 import org.greenrobot.eventbus.EventBus;
 import org.greenrobot.eventbus.Subscribe;
@@ -98,6 +99,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     private float mCurrentAccracy;
     private String mAddressStr = "";
     private Timer mTimer;
+    Gson gson = new Gson();
     String ip = "";
     String socketIp = "";
     String socketPort = "";
@@ -183,8 +185,8 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
             @Override
             public void onClick(View view) {
                 if (!socketIsCanClient) {
-                    List<String> list= new ArrayList<String>();
-                    list.add("1");
+                    List<MessageEvent> list= new ArrayList();
+                    list.add(new MessageEvent("19109987","110kv 变电站。。设备;110kv 变电站。。设备;","38.111,118.098"));
                     AlarmDialog alarmDialog = new AlarmDialog(MainActivity.this,list, new AlarmDialog.CallBack() {
                         @Override
                         public void dialogCarllBack(String s) {
@@ -463,7 +465,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     @Subscribe(threadMode = ThreadMode.MAIN)
     public void Event(MessageEvent messageEvent) {
         mTvSocket.setVisibility(View.VISIBLE);
-        SPUtils.put(this,"alarm",messageEvent.getMessage());
+        SPUtils.put(this,"alarm",gson.toJson(messageEvent));
     }
 
     @Subscribe(threadMode = ThreadMode.MAIN)

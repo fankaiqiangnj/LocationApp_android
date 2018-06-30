@@ -6,6 +6,7 @@ import android.os.Binder;
 import android.os.IBinder;
 
 import com.example.kail.locationapp.model.MessageEvent;
+import com.google.gson.Gson;
 
 import org.greenrobot.eventbus.EventBus;
 
@@ -19,16 +20,19 @@ import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
 public class SocketService extends Service {
-    ThreadPoolExecutor threadPoolExecutor = new ThreadPoolExecutor(2,6,30, TimeUnit.SECONDS,new SynchronousQueue<Runnable>());
+    ThreadPoolExecutor threadPoolExecutor = new ThreadPoolExecutor(2, 6, 30, TimeUnit.SECONDS, new SynchronousQueue<Runnable>());
+    Gson gson = new Gson();
 
     public SocketService() {
     }
+
     public class MyBinder extends Binder {
 
         public SocketService getService() {
             return SocketService.this;
         }
     }
+
     private MyBinder binder = new MyBinder();
 
     @Override
@@ -44,8 +48,8 @@ public class SocketService extends Service {
             public void run() {
                 try {
                     ServerSocket serverSocket = new ServerSocket(8888);
-                    while (true){
-                        Socket socket =serverSocket.accept();
+                    while (true) {
+                        Socket socket = serverSocket.accept();
                         // 实例化输入流，并获取网页代码
                         BufferedReader reader = new BufferedReader(new InputStreamReader(socket.getInputStream(), "UTF-8"));
                         String s; // 依次循环，至到读的值为空
@@ -54,10 +58,7 @@ public class SocketService extends Service {
                             sb.append(s);
                         }
                         reader.close();
-
-                        String str = sb.toString();
-                        MessageEvent messageEvent = new MessageEvent(str);
-                        EventBus.getDefault().post(messageEvent);
+                        EventBus.getDefault().post(gson.fromJson(sb.toString(),MessageEvent.class));
                     }
 
                 } catch (IOException e) {

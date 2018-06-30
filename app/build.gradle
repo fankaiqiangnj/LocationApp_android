@@ -47,6 +47,7 @@ dependencies {
     annotationProcessor 'com.jakewharton:butterknife-compiler:8.8.1'
     debugImplementation 'com.squareup.leakcanary:leakcanary-android:1.5'
     implementation 'com.github.f0ris.sweetalert:library:1.5.1'
+    implementation 'com.github.mcxtzhang:SwipeDelMenuLayout:V1.2.1'
 
 
 }

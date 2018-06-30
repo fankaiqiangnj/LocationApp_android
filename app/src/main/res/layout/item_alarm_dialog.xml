@@ -7,12 +7,41 @@
         android:orientation="vertical"
         android:layout_width="match_parent"
         android:layout_height="match_parent">
+        <TextView
+            android:layout_marginTop="5dp"
+            android:layout_marginLeft="15dp"
+            android:layout_marginRight="15dp"
+            android:id="@+id/check_id"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content" />
+        <View
+            android:layout_marginLeft="15dp"
+            android:layout_marginRight="15dp"
+            android:layout_marginTop="5dp"
+            android:layout_marginBottom="5dp"
+            android:background="@color/line_color"
+            android:layout_width="match_parent"
+            android:layout_height="1px"/>
+        <TextView
+            android:layout_marginTop="5dp"
+            android:layout_marginLeft="15dp"
+            android:layout_marginRight="15dp"
+            android:id="@+id/check_name"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content" />
+        <View
+            android:layout_marginTop="5dp"
+            android:layout_marginBottom="5dp"
+            android:background="@color/line_color"
+            android:layout_width="match_parent"
+            android:layout_height="1px"/>
+
 
     </LinearLayout>
     <TextView
         android:id="@+id/tv_alarm"
         android:text="接受工单"
-        android:layout_width="100dp"
+        android:layout_width="80dp"
         android:background="@drawable/bule_main_bg"
         android:gravity="center"
         android:textColor="@color/cmbkb_white"
@@ -23,7 +52,7 @@
         android:background="@drawable/bule_bg"
         android:gravity="center"
         android:textColor="@color/cmbkb_white"
-        android:layout_width="50dp"
+        android:layout_width="80dp"
         android:layout_height="match_parent" />
 
 

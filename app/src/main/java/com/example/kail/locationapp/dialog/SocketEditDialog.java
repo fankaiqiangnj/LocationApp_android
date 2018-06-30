@@ -1,44 +1,50 @@
-package com.example.kail.locationapp.util;
+package com.example.kail.locationapp.dialog;
 
 import android.app.Dialog;
 import android.content.Context;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.text.TextUtils;
-import android.text.format.DateUtils;
 import android.view.View;
 import android.widget.EditText;
 import android.widget.TextView;
 
 import com.example.kail.locationapp.R;
+import com.example.kail.locationapp.util.BaseUtil;
+import com.example.kail.locationapp.util.SPUtils;
 
 /**
  * Created by fan on 2018/4/15.
  */
 
-public class EditDialog extends Dialog {
+public class SocketEditDialog extends Dialog {
     Context mContext;
     EditText edit_main;
+    EditText edit_port;
     TextView txt_btn_cancel;
     TextView txt_btn_yes;
-    String url ="";
+    String ip ="";
+    String port ="";
     CallBack dialogCallBack;
 
-    public EditDialog(@NonNull Context context,String url,CallBack callBack) {
+    public SocketEditDialog(@NonNull Context context, String ip,String port, CallBack callBack) {
         super(context, R.style.MyDialog);
         mContext = context;
         dialogCallBack = callBack;
-        this.url = url;
+        this.ip = ip;
+        this.port = port;
     }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.edit_dialog);
+        setContentView(R.layout.edit_dialog_socket);
         edit_main = findViewById(R.id.edit_main);
+        edit_port = findViewById(R.id.edit_port);
         txt_btn_cancel = findViewById(R.id.txt_btn_cancel);
         txt_btn_yes = findViewById(R.id.txt_btn_yes);
-        edit_main.setText(url);
+        edit_main.setText(ip);
+        edit_port.setText(port);
         View.OnClickListener clickListener = new View.OnClickListener() {
             @Override
             public void onClick(View view) {
@@ -48,12 +54,14 @@ public class EditDialog extends Dialog {
                         break;
 
                     case R.id.txt_btn_yes:
-                        if (!TextUtils.isEmpty(edit_main.getText().toString().trim())) {
-                            SPUtils.put(mContext, "serviceIP", edit_main.getText().toString().trim());
-                            dialogCallBack.dialogCarllBack(edit_main.getText().toString().trim());
-                            dismiss();
+                        if (TextUtils.isEmpty(edit_main.getText().toString().trim())||TextUtils.isEmpty(edit_port.getText().toString().trim())) {
+                            BaseUtil.showToast(mContext,"请输入工单ip和端口");
+
                         }else {
-                            BaseUtil.showToast(mContext,"请输入服务器ip");
+                            SPUtils.put(mContext, "socketIp", edit_main.getText().toString().trim());
+                            SPUtils.put(mContext,"socketPort",edit_port.getText().toString().trim());
+                            dialogCallBack.dialogCarllBack(edit_main.getText().toString().trim(),edit_port.getText().toString().trim());
+                            dismiss();
                         }
 
                         break;
@@ -68,7 +76,7 @@ public class EditDialog extends Dialog {
 
     }
    public interface CallBack{
-       void  dialogCarllBack(String s);
+       void  dialogCarllBack(String ip,String port);
     }
 
 }

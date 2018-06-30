@@ -16,6 +16,7 @@
         android:layout_width="match_parent"
         android:layout_height="35dp"
         android:layout_margin="20dp"
+        android:textColor="@color/black"
         android:background="@drawable/edit_radio_edit"
         android:paddingLeft="10dp"
         android:textSize="13sp"/>

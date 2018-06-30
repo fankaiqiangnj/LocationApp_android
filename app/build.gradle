@@ -45,7 +45,8 @@ dependencies {
     //ButterKnife 依赖注解框架
     implementation 'com.jakewharton:butterknife:8.8.1'
     annotationProcessor 'com.jakewharton:butterknife-compiler:8.8.1'
-    debugImplementation 'com.squareup.leakcanary:leakcanary-android:1.5'
+    debugImplementation 'com.squareup.leakcanary:leakcanary-android:1.5.4'
+    releaseImplementation 'com.squareup.leakcanary:leakcanary-android:1.5.4'
     implementation 'com.github.f0ris.sweetalert:library:1.5.1'
     implementation 'com.github.mcxtzhang:SwipeDelMenuLayout:V1.2.1'
 

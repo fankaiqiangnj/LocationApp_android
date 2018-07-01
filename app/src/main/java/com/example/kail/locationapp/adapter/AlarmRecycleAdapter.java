@@ -18,6 +18,7 @@ import com.example.kail.locationapp.util.UrlUtil;
 
 import org.greenrobot.eventbus.EventBus;
 
+import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.net.InetSocketAddress;
 import java.net.Socket;
@@ -91,7 +92,7 @@ public class AlarmRecycleAdapter extends BaseRecyclerAdapter<MessageEvent> {
                     Socket s = new Socket();
                     SocketAddress socketAddress = new InetSocketAddress(UrlUtil.getSocketIp(mContext), Integer.valueOf(UrlUtil.getSocketPort(mContext)));
                     s.connect(socketAddress, 1500);
-                    PrintWriter pw = new PrintWriter(s.getOutputStream());
+                    PrintWriter pw = new PrintWriter(new OutputStreamWriter(s.getOutputStream(),"UTF-8"),true);
                     pw.println(LocationAppApplication.getInstance().getGson()
                             .toJson(new SocketSendJDSJ(messageEvent.getGdbh(), BaseUtil.date2String(new Date()))));
                     pw.flush();

@@ -1,5 +1,4 @@
 package com.example.kail.locationapp.model;
 
-public class SocketEvent {
-
+public class TimerEventStop {
 }

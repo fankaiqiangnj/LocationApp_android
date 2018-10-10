@@ -11,17 +11,18 @@ import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
+import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.Message;
+import android.os.SystemClock;
 import android.support.annotation.Nullable;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.telephony.TelephonyManager;
-import android.text.TextUtils;
 import android.view.View;
 import android.view.Window;
 import android.view.WindowManager;
@@ -43,47 +44,44 @@ import com.baidu.mapapi.model.LatLng;
 import com.example.kail.locationapp.LocationAppApplication;
 import com.example.kail.locationapp.R;
 import com.example.kail.locationapp.base.network.NetWorkCallback;
-import com.example.kail.locationapp.base.network.OkHttpUtil;
 import com.example.kail.locationapp.dialog.AlarmDialog;
+import com.example.kail.locationapp.dialog.SocketEditDialog;
+import com.example.kail.locationapp.gen.MessageEventDao;
 import com.example.kail.locationapp.model.ClearAlarm;
 import com.example.kail.locationapp.model.ErrorMessage;
+import com.example.kail.locationapp.model.GpsModel;
 import com.example.kail.locationapp.model.MessageEvent;
 import com.example.kail.locationapp.model.SocketEvent;
 import com.example.kail.locationapp.model.SuccessModel;
+import com.example.kail.locationapp.model.TimerEventStart;
+import com.example.kail.locationapp.model.TimerEventStop;
 import com.example.kail.locationapp.service.SocketService;
 import com.example.kail.locationapp.util.BaseUtil;
-import com.example.kail.locationapp.dialog.EditDialog;
-import com.example.kail.locationapp.util.SPUtils;
-import com.example.kail.locationapp.dialog.SocketEditDialog;
 import com.example.kail.locationapp.util.UrlUtil;
-import com.google.gson.Gson;
 
 import org.greenrobot.eventbus.EventBus;
 import org.greenrobot.eventbus.Subscribe;
 import org.greenrobot.eventbus.ThreadMode;
 
-import java.io.IOException;
+import java.io.OutputStreamWriter;
+import java.io.PrintWriter;
+import java.net.DatagramSocket;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.net.SocketAddress;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Timer;
 import java.util.TimerTask;
-import java.util.concurrent.SynchronousQueue;
-import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
 
 public class MainActivity extends AppCompatActivity implements SensorEventListener, NetWorkCallback {
     Context mContext;
     private MapView mMapView;
     private TextView mLongitude;
     private TextView mLatitude;
-    private TextView mAddress;
+    //    private TextView mAddress;
     private TextView mDownload;
     private TextView mTvSocket;
+    private TextView mAddress;
     private String url = "";
     private BaiduMap mBaiduMap;
     BitmapDescriptor mCurrentMarker;
@@ -100,18 +98,19 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     private double mCurrentLat = 0.0;
     private double mCurrentLon = 0.0;
     private float mCurrentAccracy;
-    private String mAddressStr = "";
     private Timer mTimer;
     String ip = "";
     String socketIp = "";
     String socketPort = "";
     private TelephonyManager tm;
     String client = "数据链接异常";
-    boolean socketIsCanClient = false;
     private SocketService socketService = null;
     public MyLocationListenner myListener = new MyLocationListenner();
-    //BDAbstractLocationListener为7.2版本新增的Abstract类型的监听接口，原有BDLocationListener接口暂时同步保留。具体介绍请参考后文中的说明
+    private MessageEventDao messageEventDao = LocationAppApplication.getInstance().getDaoSession().getMessageEventDao();
 
+    //BDAbstractLocationListener为7.2版本新增的Abstract类型的监听接口，原有BDLocationListener接口暂时同步保留。具体介绍请参考后文中的说明
+    //建立udp的服务
+    DatagramSocket datagramSocket;
 
     private Handler doActionHandler = new Handler() {
         @Override
@@ -122,12 +121,12 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
                 case 1:
                     mLongitude.setText("经度: " + mCurrentLon);
                     mLatitude.setText("纬度: " + mCurrentLat);
-                    if (client.equals("数据连接正常")) {
+                 /*   if (client.equals("数据连接正常")) {
                         mAddress.setTextColor(Color.GREEN);
                     } else {
                         mAddress.setTextColor(Color.RED);
                     }
-                    mAddress.setText("连接: " + client);
+                    mAddress.setText("连接: " + client);*/
                     break;
                 default:
                     break;
@@ -161,8 +160,8 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         mContext = this.getBaseContext();
         ip = UrlUtil.getIp(mContext);
         url = UrlUtil.getUrl(ip);
-        socketIp= UrlUtil.getSocketIp(mContext);
-        socketPort =UrlUtil.getSocketPort(mContext);
+        socketIp = UrlUtil.getSocketIp(mContext);
+        socketPort = UrlUtil.getSocketPort(mContext);
         checkSocket();
         //获取地图控件引用
         mMapView = (MapView) findViewById(R.id.bmapView);
@@ -174,55 +173,45 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         mTvSocket.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                if (socketIsCanClient) {
-                    List<MessageEvent> list= new ArrayList();
-                    String s = (String) SPUtils.get(mContext,"alarm","");
-                    if (TextUtils.isEmpty(s)){
-                        return;
-                    }
-                    MessageEvent messageEvent = LocationAppApplication.getInstance().getGson().fromJson(s,MessageEvent.class);
-                    if (messageEvent==null){
-                        return;
-                    }
-                    if (messageEvent.getType()>2){
-                        return;
-                    }else {
-                        list.add(messageEvent);
-                    }
-                    if (list.size()==0){
-                        return;
-                    }
-                    AlarmDialog alarmDialog = new AlarmDialog(MainActivity.this,list, new AlarmDialog.CallBack() {
-                        @Override
-                        public void dialogCarllBack(String s) {
-
-                        }
-                    });
-                    alarmDialog.show();
-
-                } else {
-                    SocketEditDialog socketEditDialog = new SocketEditDialog(MainActivity.this, socketIp, socketPort, new SocketEditDialog.CallBack() {
-                        @Override
-                        public void dialogCarllBack(String ip, String port) {
-                            socketIp = ip;
-                            socketPort = port;
-                            checkSocket();
-                        }
-                    });
-                    socketEditDialog.show();
+                List<MessageEvent> lists = messageEventDao.queryBuilder().where(MessageEventDao.Properties.Type.between(0, 2)).list();
+                if (lists.size() == 0) {
+                    return;
                 }
+                AlarmDialog alarmDialog = new AlarmDialog(MainActivity.this, lists, new AlarmDialog.CallBack() {
+                    @Override
+                    public void dialogCarllBack(String s) {
+                        try {
+                            Intent i1 = new Intent();
+                            i1.setData(Uri.parse(s));
+                            startActivity(i1);
+                        } catch (Exception e) {
+                            BaseUtil.showToast(mContext, "需要先安装百度地图");
+                        }
+                    }
+                });
+                alarmDialog.show();
+
             }
         });
         mAddress.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                EditDialog editDialog = new EditDialog(MainActivity.this, ip, new EditDialog.CallBack() {
+              /*  EditDialog editDialog = new EditDialog(MainActivity.this, ip, new EditDialog.CallBack() {
                     @Override
                     public void dialogCarllBack(String s) {
                         url = UrlUtil.http + s + UrlUtil.uri;
                     }
                 });
-                editDialog.show();
+                editDialog.show();*/
+                SocketEditDialog socketEditDialog = new SocketEditDialog(MainActivity.this, socketIp, socketPort, new SocketEditDialog.CallBack() {
+                    @Override
+                    public void dialogCarllBack(String ip, String port) {
+                        socketIp = ip;
+                        socketPort = port;
+                        checkSocket();
+                    }
+                });
+                socketEditDialog.show();
             }
         });
         tm = (TelephonyManager) getBaseContext().getSystemService(Context.TELEPHONY_SERVICE);
@@ -249,18 +238,29 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
             initMyLocation();
 
         }
-        mTimer = new Timer();
-        setTimerTask();
+
         Intent intent = new Intent(this, SocketService.class);
         bindService(intent, serviceConnection, BIND_AUTO_CREATE);
         EventBus.getDefault().register(this);
+        List<MessageEvent> list = messageEventDao.queryBuilder().where(MessageEventDao.Properties.Type.between(0, 2)).list();
+        mTvSocket.setText(String.valueOf(list.size()));
+
 
 //        ScheduledExecutorService
     }
 
     @Override
     protected void onDestroy() {
-        mTimer.cancel();
+        if (mTimer != null) {
+            try {
+                mTimer.cancel();
+            } catch (Exception e) {
+
+            }
+        }
+        if (datagramSocket != null) {
+            datagramSocket.close();
+        }
         // 退出时销毁定位
 //        mLocationClient.stop();
         // 关闭定位图层
@@ -302,7 +302,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         LocationClientOption option = new LocationClientOption();
         option.setLocationMode(LocationClientOption.LocationMode.Hight_Accuracy);
         //可选，默认高精度，设置定位模式，高精度，低功耗，仅设备
-        option.setCoorType("bd09ll");
+        option.setCoorType("wgs84");
         //可选，默认gcj02，设置返回的定位结果坐标系
         int span = 3000;
         option.setScanSpan(span);
@@ -425,6 +425,8 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
             mCurrentLat = location.getLatitude();//获取纬度信息
             mCurrentLon = location.getLongitude();//获取经度信息
             mCurrentAccracy = location.getRadius();
+            LocationAppApplication.getInstance().setmCurrentLat(location.getLatitude());
+            LocationAppApplication.getInstance().setmCurrentLon(location.getLongitude());
 //            mAddressStr = location.getAddrStr();    //获取当前位置描述信息
             locData = new MyLocationData.Builder()
                     .accuracy(location.getRadius())
@@ -450,6 +452,100 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         }
     }
 
+
+    @Subscribe(threadMode = ThreadMode.MAIN)
+    public void Event(MessageEvent messageEvent) {
+        if (messageEventDao.queryBuilder().where(MessageEventDao.Properties.Gdbh.eq(messageEvent.getGdbh())).unique() != null) {
+            messageEventDao.update(messageEvent);
+        } else {
+            messageEventDao.insert(messageEvent);
+        }
+        mTvSocket.setBackground(ContextCompat.getDrawable(this, R.drawable.bg_radius_yell));
+        List<MessageEvent> list = messageEventDao.queryBuilder().where(MessageEventDao.Properties.Type.between(0, 2)).list();
+        mTvSocket.setText(String.valueOf(list.size()));
+    }
+
+    @Subscribe(threadMode = ThreadMode.MAIN)
+    public void Event(ClearAlarm clearAlarm) {
+        mTvSocket.setBackground(ContextCompat.getDrawable(this, R.drawable.bg_radius_yell));
+        List<MessageEvent> list = messageEventDao.queryBuilder().where(MessageEventDao.Properties.Type.between(0, 2)).list();
+        mTvSocket.setText(String.valueOf(list.size()));
+    }
+
+    @Subscribe(threadMode = ThreadMode.MAIN)
+    public void Event(ErrorMessage errorMessage) {
+        BaseUtil.showToast(mContext, errorMessage.getError());
+    }
+
+    @Subscribe(threadMode = ThreadMode.MAIN)
+    public void Event(TimerEventStart eventStart) {
+        startTimer();
+    }
+
+    @Subscribe(threadMode = ThreadMode.MAIN)
+    public void Event(TimerEventStop eventStop) {
+        stopTimer();
+    }
+
+    @Subscribe(threadMode = ThreadMode.MAIN)
+    public void SocketEvent(SocketEvent socketEvent) {
+        if (LocationAppApplication.getInstance().isSocketIsCanClient()) {
+            mAddress.setText("连接：正常");
+            mAddress.setTextColor(Color.GREEN);
+            mTvSocket.setBackground(ContextCompat.getDrawable(this, R.drawable.bg_radius_yell));
+        } else {
+            mAddress.setText("连接：异常");
+            mAddress.setTextColor(Color.RED);
+            mTvSocket.setBackground(ContextCompat.getDrawable(this, R.drawable.bg_radius_red));
+        }
+    }
+
+    public void checkSocket() {
+        LocationAppApplication.getInstance().getThreadPoolExecutor().execute(new Runnable() {
+            @Override
+            public void run() {
+                clientServer();
+            }
+
+            public void clientServer() {
+                try {
+                    Socket s = new Socket();
+                    SocketAddress socketAddress = new InetSocketAddress(socketIp, Integer.valueOf(socketPort));
+                    s.connect(socketAddress, 1500);
+                    LocationAppApplication.getInstance().setSocketIsCanClient(true);
+                    s.close();
+                    EventBus.getDefault().post(new SocketEvent());
+                } catch (Exception e) {
+                    LocationAppApplication.getInstance().setSocketIsCanClient(false);
+                    EventBus.getDefault().post(new SocketEvent());
+                    SystemClock.sleep(15000);
+                    clientServer();
+                }
+
+            }
+        });
+    }
+
+    public void startTimer() {
+        if (mTimer != null) {
+            try {
+                mTimer.cancel();
+            } catch (Exception e) {
+
+            }
+        }
+
+        mTimer = new Timer();
+        setTimerTask();
+    }
+
+    public void stopTimer() {
+        mTimer.cancel();
+        if (datagramSocket !=null&& !datagramSocket.isClosed()) {
+            datagramSocket.close();
+        }
+    }
+
     private void setTimerTask() {
         mTimer.schedule(new TimerTask() {
             @Override
@@ -457,70 +553,65 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
                 if ((String.valueOf(MainActivity.this.mCurrentLon).equals("4.9E-324")) || (String.valueOf(MainActivity.this.mCurrentLat).equals("4.9E-324"))) {
                     return;
                 }
-                HashMap localHashMap = new HashMap();
+                //http版本
+         /*       HashMap localHashMap = new HashMap();
                 localHashMap.put("time", BaseUtil.date2String(new Date()));
                 localHashMap.put("east", String.valueOf(MainActivity.this.mCurrentLon));
                 localHashMap.put("north", String.valueOf(MainActivity.this.mCurrentLat));
                 localHashMap.put("userId", tm.getDeviceId());
                 OkHttpUtil.post(url + "CoreServlet", localHashMap, 0, SuccessModel.class, MainActivity.this);
-            }
-        }, 7000L, 7000L);
-    }
+          */
 
-    @Subscribe(threadMode = ThreadMode.MAIN)
-    public void Event(MessageEvent messageEvent) {
-        mTvSocket.setVisibility(View.VISIBLE);
-        mTvSocket.setText("1");
-        SPUtils.put(this,"alarm",LocationAppApplication.getInstance().getGson().toJson(messageEvent));
-    }
-    @Subscribe(threadMode = ThreadMode.MAIN)
-    public void Event(ClearAlarm clearAlarm) {
-        mTvSocket.setText("0");
-        mTvSocket.setVisibility(View.GONE);
-    }
-
-    @Subscribe(threadMode = ThreadMode.MAIN)
-    public void Event(ErrorMessage errorMessage) {
-        BaseUtil.showToast(mContext,errorMessage.getError());
-    }
-
-    @Subscribe(threadMode = ThreadMode.MAIN)
-    public void SocketEvent(SocketEvent socketEvent) {
-        if (socketEvent.isCanClient()){
-            mTvSocket.setVisibility(View.GONE);
-            BaseUtil.showToast(this, "工单服务连接成功");
-            mTvSocket.setBackground(ContextCompat.getDrawable(this, R.drawable.bg_radius_yell));
-        }else {
-            mTvSocket.setVisibility(View.VISIBLE);
-            BaseUtil.showToast(this, "工单服务连接失败");
-            mTvSocket.setBackground(ContextCompat.getDrawable(this, R.drawable.bg_radius_red));
-        }
-
-
-    }
-
-    public void checkSocket() {
-        LocationAppApplication.getInstance().getThreadPoolExecutor().execute(new Runnable() {
-            @Override
-            public void run() {
+         //tcp版本
                 try {
+                    GpsModel model = new GpsModel();
+                    model.setUserid(tm.getDeviceId());
+                    model.setLatitude(String.valueOf(mCurrentLat));
+                    model.setLongitude(String.valueOf(mCurrentLon));
                     Socket s = new Socket();
-                    SocketAddress socketAddress = new InetSocketAddress(socketIp, Integer.valueOf(socketPort));
-                    s.connect(socketAddress,1500);
-                    socketIsCanClient = true;
+                    SocketAddress socketAddress = new InetSocketAddress(UrlUtil.getSocketIp(mContext), Integer.valueOf(UrlUtil.getSocketPort(mContext)));
+                    s.connect(socketAddress, 1500);
+                    PrintWriter pw = new PrintWriter(new OutputStreamWriter(s.getOutputStream(), "UTF-8"), true);
+                    pw.println(LocationAppApplication.getInstance().getGson()
+                            .toJson(model));
+                    pw.flush();
+                    s.shutdownOutput();
                     s.close();
-                    SocketEvent messageEvent = new SocketEvent(true);
-                    EventBus.getDefault().post(messageEvent);
-                } catch (IOException e) {
-                    socketIsCanClient = false;
-                    SocketEvent messageEvent = new SocketEvent(false);
-                    EventBus.getDefault().post(messageEvent);
-                    e.printStackTrace();
+                    LocationAppApplication.getInstance().setSocketIsCanClient(true);
+                    EventBus.getDefault().post(new SocketEvent());
+                } catch (Exception e) {
+                    LocationAppApplication.getInstance().setSocketIsCanClient(false);
+                    EventBus.getDefault().post(new SocketEvent());
                 }
 
-            }
-        });
+               //udp版本
+       /*         try {
+                    if (datagramSocket == null|| datagramSocket.isClosed()) {
+                        datagramSocket = new DatagramSocket();
+                    }
+                        GpsModel model = new GpsModel();
+                        model.setUserid(tm.getDeviceId());
+                        model.setLatitude(String.valueOf(mCurrentLat));
+                        model.setLongitude(String.valueOf(mCurrentLon));
 
+                        //准备数据，把数据封装到数据包中。
+                        String data = LocationAppApplication.getInstance().getGson()
+                                .toJson(model);
+                        //创建了一个数据包
+
+                        DatagramPacket packet = new DatagramPacket(data.getBytes(), data.getBytes().length, InetAddress.getByName(socketIp), Integer.valueOf(socketPort));
+                        //调用udp的服务发送数据包
+                        datagramSocket.send(packet);
+                        //关闭资源 ---实际上就是释放占用的端口号
+
+                } catch (Exception e) {
+                    EventBus.getDefault().post(new ErrorMessage("udp发送失败"));
+                }*/
+
+
+            }
+        }, 1000L, 7000L);
     }
+
 }
 

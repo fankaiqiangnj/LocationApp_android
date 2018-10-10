@@ -12,7 +12,6 @@ import android.view.WindowManager;
 
 import com.example.kail.locationapp.R;
 import com.example.kail.locationapp.adapter.AlarmRecycleAdapter;
-import com.example.kail.locationapp.base.util.ScreenUtils;
 import com.example.kail.locationapp.model.MessageEvent;
 
 import java.util.List;
@@ -26,7 +25,6 @@ public class AlarmDialog extends Dialog implements AlarmRecycleAdapter.Impl{
     CallBack dialogCallBack;
     List<MessageEvent> list;
     RecyclerView recyclerView;
-    int height = (int) Math.ceil(ScreenUtils.getScreenHeight(mContext) * 0.618);
 
 
     public AlarmDialog(@NonNull Context context, List<MessageEvent> alarmList, CallBack callBack) {
@@ -54,15 +52,22 @@ public class AlarmDialog extends Dialog implements AlarmRecycleAdapter.Impl{
         recyclerView.setAdapter(alarmRecycleAdapter);
 
 
-       /* if(list.size()>2)
+      /*  if(list.size()>3)
         {
-            this.getWindow().setLayout(LinearLayout.LayoutParams.MATCH_PARENT, height);
+            this.getWindow().setLayout(LinearLayout.LayoutParams.MATCH_PARENT, (int) Math.ceil(ScreenUtils.getScreenHeight(mContext) * 0.618));
+
         }*/
     }
 
     @Override
     public void close() {
         dismiss();
+    }
+
+    @Override
+    public void goToBaiDu(String uri) {
+        dismiss();
+        dialogCallBack.dialogCarllBack(uri);
     }
 
     public interface CallBack {

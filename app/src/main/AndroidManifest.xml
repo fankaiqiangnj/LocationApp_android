@@ -36,6 +36,8 @@
             android:value="Y2QnlaWWuDeFPQGY9hcBGtjjGBHzavIM" />
 
         <activity
+            android:scheme="baidumap"
+            android:host="map"
             android:name=".activity.MainActivity"
             android:screenOrientation="portrait">
             <intent-filter>

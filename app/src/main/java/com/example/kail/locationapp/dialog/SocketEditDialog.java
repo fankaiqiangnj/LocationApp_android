@@ -27,7 +27,7 @@ public class SocketEditDialog extends Dialog {
     String port ="";
     CallBack dialogCallBack;
 
-    public SocketEditDialog(@NonNull Context context, String ip,String port, CallBack callBack) {
+    public SocketEditDialog(@NonNull Context context, String ip,String port,  CallBack callBack) {
         super(context, R.style.MyDialog);
         mContext = context;
         dialogCallBack = callBack;

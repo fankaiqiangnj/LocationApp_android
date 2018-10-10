@@ -1,13 +1,45 @@
 package com.example.kail.locationapp.model;
 
+import org.greenrobot.greendao.annotation.Entity;
+import org.greenrobot.greendao.annotation.Id;
+import org.greenrobot.greendao.annotation.Generated;
+
+@Entity
 public class MessageEvent {
     public MessageEvent() {
     }
 
-    public MessageEvent(String gdbh, String qxnr, String gps) {
+    public MessageEvent(String gdbh, String qxnr, String longitude, String latitude) {
         this.gdbh = gdbh;
         this.qxnr = qxnr;
-        this.gps = gps;
+        this.longitude = longitude;
+        this.latitude = latitude;
+    }
+
+    @Generated(hash = 104803499)
+    public MessageEvent(String gdbh, String qxnr, String longitude, String latitude,
+            int type) {
+        this.gdbh = gdbh;
+        this.qxnr = qxnr;
+        this.longitude = longitude;
+        this.latitude = latitude;
+        this.type = type;
+    }
+
+    public String getLongitude() {
+        return longitude;
+    }
+
+    public void setLongitude(String longitude) {
+        this.longitude = longitude;
+    }
+
+    public String getLatitude() {
+        return latitude;
+    }
+
+    public void setLatitude(String latitude) {
+        this.latitude = latitude;
     }
 
     /**
@@ -15,10 +47,12 @@ public class MessageEvent {
      * qxnr : 抢修内容
      * gps : 坐标,坐标
      */
-
+    @Id
     private String gdbh;
     private String qxnr;
-    private String gps;
+    private String longitude;
+    private String latitude;
+
     private int type;
 
     public String getGdbh() {
@@ -37,13 +71,6 @@ public class MessageEvent {
         this.qxnr = qxnr;
     }
 
-    public String getGps() {
-        return gps;
-    }
-
-    public void setGps(String gps) {
-        this.gps = gps;
-    }
 
     public int getType() {
         return type;

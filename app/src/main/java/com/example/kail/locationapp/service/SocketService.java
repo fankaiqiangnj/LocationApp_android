@@ -6,6 +6,7 @@ import android.os.Binder;
 import android.os.IBinder;
 
 import com.example.kail.locationapp.LocationAppApplication;
+import com.example.kail.locationapp.model.ErrorMessage;
 import com.example.kail.locationapp.model.MessageEvent;
 import com.google.gson.Gson;
 
@@ -59,7 +60,15 @@ public class SocketService extends Service {
                             sb.append(s);
                         }
                         reader.close();
-                        EventBus.getDefault().post(gson.fromJson(sb.toString(),MessageEvent.class));
+                        MessageEvent messageEvent = null;
+                        try {
+                            messageEvent = gson.fromJson(sb.toString(), MessageEvent.class);
+                        } catch (Exception e) {
+                            EventBus.getDefault().post(new ErrorMessage("数据解析异常"));
+                        }
+                        if (messageEvent != null) {
+                            EventBus.getDefault().post(messageEvent);
+                        }
                     }
 
                 } catch (IOException e) {
